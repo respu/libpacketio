@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 #include <sys/mman.h>
+#include <net/if.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -27,6 +28,24 @@ struct tpacket_ring {
 	struct tpacket_req3	req;
 	packetio_process_t	process_fn;
 };
+
+int packetio_iface_any(packetio_iface_t *iface)
+{
+	*iface = 0;
+	return 0;
+}
+
+int packetio_name_to_iface(const char *iface_name, packetio_iface_t *iface)
+{
+	unsigned int idx;
+
+	idx = if_nametoindex(iface_name);
+	if (!idx) {
+		return -1;
+	}
+	*iface = idx;
+	return 0;
+}
 
 static void tpacket_process_block(struct tpacket_ring *ring, struct tpacket_block_desc *block_desc)
 {
@@ -68,14 +87,14 @@ static int tpacket_process_ring(struct tpacket_ring *ring)
 	return 0;
 }
 
-static int tpacket_bind_ring(struct tpacket_ring *ring)
+static int tpacket_bind_ring(struct tpacket_ring *ring, packetio_iface_t *iface)
 {
 	struct sockaddr_ll ll;
 
 	memset(&ll, 0, sizeof(ll));
 	ll.sll_family	= PF_PACKET;
 	ll.sll_protocol	= htons(ETH_P_ALL);
-	ll.sll_ifindex	= 0;
+	ll.sll_ifindex	= *iface;
 	ll.sll_hatype	= 0;
 	ll.sll_pkttype	= 0;
 	ll.sll_halen	= 0;
@@ -132,7 +151,7 @@ static int tpacket_setup_ring(struct tpacket_ring *ring)
 	return 0;
 }
 
-int packetio_start(packetio_process_t process_fn)
+int packetio_start(packetio_iface_t *iface, packetio_process_t process_fn)
 {
 	struct tpacket_ring ring;
 	int sockfd, version;
@@ -155,7 +174,7 @@ int packetio_start(packetio_process_t process_fn)
 	if (tpacket_mmap_ring(&ring) < 0) {
 		goto error;
 	}
-	if (tpacket_bind_ring(&ring) < 0) {
+	if (tpacket_bind_ring(&ring, iface) < 0) {
 		goto error;
 	}
 	if (tpacket_process_ring(&ring) < 0) {

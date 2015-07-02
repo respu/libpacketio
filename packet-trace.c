@@ -8,10 +8,19 @@
 #include <arpa/inet.h>
 #include <linux/ip.h>
 
+#include <getopt.h>
+#include <libgen.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <stdio.h>
+
+struct trace_config {
+	const char	*iface_name;
+};
+
+static const char *program;
 
 void trace_tcp(struct iphdr *ip)
 {
@@ -109,11 +118,71 @@ static void trace_packets(struct packetio_packet *packets, size_t count)
 	}
 }
 
+static void usage(void)
+{
+	fprintf(stdout,
+		"usage: %s [options]\n"
+		"  options:\n"
+		"    -i, --interface <name>  Listen on interface. If not specified, listen to all interfaces.\n"
+		"    -h, --help              Display this help and exit.\n",
+		program);
+	exit(1);
+}
+
+void parse_options(struct trace_config *cfg, int argc, char *argv[])
+{
+	static struct option trace_options[] = {
+		{"interface",	required_argument,	0,	'i'},
+		{"help",	no_argument,		0,	'h'},
+		{0, 0, 0, 0}
+	};
+
+	for (;;) {
+		int opt_idx = 0;
+		int c;
+
+		c = getopt_long(argc, argv, "i:h", trace_options, &opt_idx);
+		if (c == -1)
+			break;
+
+		switch (c) {
+		case 'i':
+			cfg->iface_name = optarg;
+			break;
+		case 'h':
+			usage();
+		default:
+			usage();
+		}
+	}
+}
+
 int main(int argc, char* argv[])
 {
+	struct trace_config cfg = {
+	};
+	packetio_iface_t iface;
 	int err;
 
-	err = packetio_start(trace_packets);
+	program = basename(argv[0]);
+
+	parse_options(&cfg, argc, argv);
+
+	if (cfg.iface_name) {
+		err = packetio_name_to_iface(cfg.iface_name, &iface);
+		if (err < 0) {
+			fprintf(stderr, "error: %s: %s\n", cfg.iface_name, strerror(errno));
+			return 1;
+		}
+	} else {
+		err = packetio_iface_any(&iface);
+		if (err < 0) {
+			fprintf(stderr, "error: %s\n", strerror(errno));
+			return 1;
+		}
+	}
+
+	err = packetio_start(&iface, trace_packets);
 	if (err < 0) {
 		fprintf(stderr, "error: %s\n", strerror(errno));
 		return 1;

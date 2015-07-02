@@ -12,9 +12,15 @@ struct packetio_packet {
 	size_t		size;
 };
 
+typedef int packetio_iface_t;
+
 typedef void (*packetio_process_t)(struct packetio_packet *packets, size_t count);
 
-int packetio_start(packetio_process_t process_fn);
+int packetio_iface_any(packetio_iface_t *iface);
+
+int packetio_name_to_iface(const char *iface_name, packetio_iface_t *iface);
+
+int packetio_start(packetio_iface_t *iface, packetio_process_t process_fn);
 
 #ifdef __cplusplus
 }
