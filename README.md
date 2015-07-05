@@ -16,8 +16,8 @@ exposing capabilities of modern NICs to applications.
 ### Packet I/O
 
  * [x] Linux TPACKET (receive only)
+ * [x] Netmap (receive only, untested)
  * [ ] DPDK
- * [ ] Netmap
  * [ ] PF_RING ZC
 
 ## Building
@@ -40,6 +40,12 @@ There's a ``packet-trace`` example application you can try out:
 
 ```sh
 sudo ./packet-trace 
+```
+
+To build with the netmap backend, generate makefiles with:
+
+```sh
+cmake . -DBUILD_LINUX_TPACKET=OFF -DBUILD_NETMAP=ON -DNETMAP_DIR=<path to netmap repo>
 ```
 
 ## License

@@ -37,13 +37,13 @@ int packetio_iface_any(packetio_iface_t *iface)
 
 int packetio_name_to_iface(const char *iface_name, packetio_iface_t *iface)
 {
-	unsigned int idx;
+	unsigned long idx;
 
 	idx = if_nametoindex(iface_name);
 	if (!idx) {
 		return -1;
 	}
-	*iface = idx;
+	*iface = (void*)idx;
 	return 0;
 }
 
@@ -94,7 +94,7 @@ static int tpacket_bind_ring(struct tpacket_ring *ring, packetio_iface_t *iface)
 	memset(&ll, 0, sizeof(ll));
 	ll.sll_family	= PF_PACKET;
 	ll.sll_protocol	= htons(ETH_P_ALL);
-	ll.sll_ifindex	= *iface;
+	ll.sll_ifindex	= (unsigned long) *iface;
 	ll.sll_hatype	= 0;
 	ll.sll_pkttype	= 0;
 	ll.sll_halen	= 0;
